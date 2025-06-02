@@ -1,4 +1,4 @@
-# Trello Mini Backend
+# TaskBoard Backend
 
 A backend service for a Trello-like task management application.
 
@@ -34,8 +34,8 @@ trello-mini-be/
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
-cd trello-mini-be
+git clone https://github.com/DtPhat/taskboard-be.git
+cd taskboard-be
 ```
 
 2. Install dependencies:
