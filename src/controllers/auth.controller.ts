@@ -6,6 +6,7 @@ import { sendVerificationCode } from '../services/mail.service';
 
 const userCollection = db.collection('users');
 
+// Signup flow
 async function signup(req: Request, res: Response) {
   const { email, verificationCode } = req.body;
   if (!email) return res.status(400).json({ error: 'Email is required' });
@@ -16,37 +17,78 @@ async function signup(req: Request, res: Response) {
   if (!userDoc) {
     // New signup, send code
     const code = generateCode();
-    await userCollection.add({
+    // Create user document first
+    const newUserDoc = await userCollection.add({
       email,
       verificationCode: code,
       verified: false,
       createdAt: new Date().toISOString(),
     });
+
+    // Update with ID
+    await newUserDoc.update({
+      id: newUserDoc.id
+    });
     await sendVerificationCode(email, code);
     return res.status(201).json({ message: 'Verification code sent to email' });
-  } else {
-    // Existing user, check code
-    const user = userDoc.data();
-    if (user.verified) return res.status(400).json({ error: 'User already exists' });
-
-    if (verificationCode && verificationCode === user.verificationCode) {
-      await userDoc.ref.update({ verified: true, verificationCode: null });
-      return res.status(201).json({ id: userDoc.id, email });
-    } else {
-      return res.status(400).json({ error: 'Invalid verification code' });
-    }
   }
+
+  // Existing user, check code
+  const user = userDoc.data();
+  if (user.verified) return res.status(400).json({ error: 'User already exists' });
+
+  if (verificationCode && verificationCode === user.verificationCode) {
+    await userDoc.ref.update({ verified: true, verificationCode: null });
+    return res.status(201).json({ id: userDoc.id, email });
+  }
+
+  return res.status(400).json({ error: 'Invalid verification code' });
 }
 
-async function signin(req: Request, res: Response) {
+// Signin flow
+// async function verifySignin(req: Request, res: Response) {
+//   const { email, verificationCode } = req.body;
+//   if (!email) return res.status(400).json({ error: 'Email is required' });
+
+//   const userSnapshot = await userCollection.where('email', '==', email).get();
+//   let userDoc = userSnapshot.docs[0];
+//   if (!userDoc) {
+//     const code = generateCode();
+//     await userCollection.add({
+//       email,
+//       verificationCode: code,
+//       verified: false,
+//       createdAt: new Date().toISOString(),
+//     });
+//     await sendVerificationCode(email, code);
+//     return res.status(400).json({ error: 'No such user, code sent for verification' });
+//   }
+
+//   const user = userDoc.data();
+
+//   if (verificationCode && verificationCode === user.verificationCode) {
+//     const token = signJwt({ id: userDoc.id, email: user.email });
+//     const userData = {
+//       id: userDoc.id,
+//       email: user.email,
+//     };
+//     await userDoc.ref.update({ verificationCode: null, verified: true }); // Invalidate code and mark as verified
+//     return res.status(200).json({ 
+//       accessToken: token,
+//       user: userData
+//     });
+//   }
+
+//   return res.status(401).json({ error: 'Invalid email or verification code' });
+// }
+
+async function verifySignin(req: Request, res: Response) {
   const { email, verificationCode } = req.body;
   if (!email) return res.status(400).json({ error: 'Email is required' });
 
   const userSnapshot = await userCollection.where('email', '==', email).get();
   let userDoc = userSnapshot.docs[0];
-
   if (!userDoc) {
-    // Send code if not exists
     const code = generateCode();
     await userCollection.add({
       email,
@@ -56,23 +98,49 @@ async function signin(req: Request, res: Response) {
     });
     await sendVerificationCode(email, code);
     return res.status(400).json({ error: 'No such user, code sent for verification' });
-  } else {
-    const user = userDoc.data();
-    if (!user.verified) {
-      // Send code again
-      const code = generateCode();
-      await userDoc.ref.update({ verificationCode: code });
-      await sendVerificationCode(email, code);
-      return res.status(400).json({ error: 'User not verified, new code sent' });
-    }
-    if (verificationCode && verificationCode === user.verificationCode) {
-      const token = signJwt({ id: userDoc.id, email: user.email });
-      await userDoc.ref.update({ verificationCode: null }); // Invalidate code
-      return res.status(200).json({ accessToken: token });
-    } else {
-      return res.status(401).json({ error: 'Invalid email or verification code' });
-    }
   }
+
+  const user = userDoc.data();
+  // if (!user.verified) {
+  //   const code = generateCode();
+  //   await userDoc.ref.update({ verificationCode: code });
+  //   await sendVerificationCode(email, code);
+  //   return res.status(400).json({ error: 'User not verified, new code sent' });
+  // }
+
+  const token = signJwt({ id: userDoc.id, email: user.email });
+  const userData = {
+    id: userDoc.id,
+    email: user.email,
+  };
+  // await userDoc.ref.update({ verificationCode: null, verified: true });
+  return res.status(200).json({
+    accessToken: token,
+    user: userData
+  });
 }
 
-export default { signup, signin };
+async function signin(req: Request, res: Response) {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+
+  const userSnapshot = await userCollection.where('email', '==', email).get();
+  let userDoc = userSnapshot.docs[0];
+
+  if (!userDoc) {
+    return res.status(400).json({ error: 'No such user exists' });
+  }
+
+  // const user = userDoc.data();
+  // if (user.verified) {
+  //   return res.status(400).json({ error: 'User already verified' });
+  // }
+
+  // Generate and send new verification code
+  // const code = generateCode();
+  // await userDoc.ref.update({ verificationCode: code });
+  // await sendVerificationCode(email, code);
+  return res.status(200).json({ message: 'Verification code sent to email' });
+}
+
+export default { signup, signin, verifySignin };

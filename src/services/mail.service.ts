@@ -3,13 +3,16 @@ import { EMAIL_CONFIG } from '../config';
 
 export async function sendVerificationCode(email: string, code: string) {
   const transporter = nodemailer.createTransport(EMAIL_CONFIG);
-
-  await transporter.sendMail({
-    from: EMAIL_CONFIG.auth.user,
-    to: email,
-    subject: 'Board/Card Invitation',
-    text: typeof code === 'string'
-      ? `Your verification code is: ${code}`
-      : code, // Allow sending a message directly
-  });
+  try {
+    await transporter.sendMail({
+      from: EMAIL_CONFIG.auth.user,
+      to: email,
+      subject: 'Verification Code',
+      text: typeof code === 'string'
+        ? `Your verification code is: ${code}`
+        : code, // Allow sending a message directly
+    });
+  } catch (error) {
+    console.log(error);
+  }
 }

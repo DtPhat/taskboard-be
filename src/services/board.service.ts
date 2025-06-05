@@ -5,7 +5,7 @@ export const BoardService = {
   async createBoard({ name, description, ownerId }: { name: string; description: string; ownerId: string }) {
     const boardRef = db.collection('boards').doc();
     const board = {
-      boardId: boardRef.id,
+      id: boardRef.id,
       name,
       description,
       ownerId,
@@ -27,8 +27,8 @@ export const BoardService = {
   },
 
   // Get a board by id if user is a member
-  async getBoardById(boardId: string, userId: string) {
-    const boardRef = db.collection('boards').doc(boardId);
+  async getBoardById(id: string, userId: string) {
+    const boardRef = db.collection('boards').doc(id);
     const boardSnap = await boardRef.get();
     if (!boardSnap.exists) throw { status: 404, message: 'Board not found' };
     const board = boardSnap.data();
@@ -38,8 +38,8 @@ export const BoardService = {
   },
 
   // Update board if user is the owner
-  async updateBoard(boardId: string, userId: string, { name, description }: { name?: string; description?: string }) {
-    const boardRef = db.collection('boards').doc(boardId);
+  async updateBoard(id: string, userId: string, { name, description }: { name?: string; description?: string }) {
+    const boardRef = db.collection('boards').doc(id);
     const boardSnap = await boardRef.get();
     if (!boardSnap.exists) throw { status: 404, message: 'Board not found' };
     const board = boardSnap.data();
@@ -55,8 +55,8 @@ export const BoardService = {
   },
 
   // Delete board if user is the owner
-  async deleteBoard(boardId: string, userId: string) {
-    const boardRef = db.collection('boards').doc(boardId);
+  async deleteBoard(id: string, userId: string) {
+    const boardRef = db.collection('boards').doc(id);
     const boardSnap = await boardRef.get();
     if (!boardSnap.exists) throw { status: 404, message: 'Board not found' };
     const board = boardSnap.data();

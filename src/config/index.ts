@@ -13,9 +13,10 @@ initializeApp({
 export const db = getFirestore();
 export const JWT_SECRET = process.env.JWT_SECRET || 'random_jwt_secret';
 export const EMAIL_CONFIG = {
-  host: process.env.EMAIL_HOST,
-  port: Number(process.env.EMAIL_PORT),
-  secure: process.env.EMAIL_SECURE === 'false',
+  service: 'gmail',
+  // host: process.env.EMAIL_HOST,
+  // port: Number(process.env.EMAIL_PORT),
+  // secure: process.env.EMAIL_SECURE === 'false',
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
