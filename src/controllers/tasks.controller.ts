@@ -24,9 +24,9 @@ export default {
 
   async updateTask(req: Request, res: Response) {
     const { boardId, cardId, taskId } = req.params;
-    const { title, description, status } = req.body;
+    const { title, description, status, newCardId } = req.body;
     const ownerId = (req as any).user.id;
-    const updated = await TaskService.updateTask(boardId, cardId, taskId, { title, description, status, ownerId });
+    const updated = await TaskService.updateTask(boardId, cardId, taskId, { title, description, status, ownerId, newCardId });
     res.json(updated);
   },
 

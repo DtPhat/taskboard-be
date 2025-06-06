@@ -8,8 +8,11 @@ const userCollection = db.collection('users');
 
 // Signup flow
 async function signup(req: Request, res: Response) {
-  const { email, verificationCode } = req.body;
+  const { email, name, avatar } = req.body;
+  
+  // Validate required fields
   if (!email) return res.status(400).json({ error: 'Email is required' });
+  if (!name) return res.status(400).json({ error: 'Name is required' });
 
   const userSnapshot = await userCollection.where('email', '==', email).get();
   let userDoc = userSnapshot.docs[0];
@@ -20,6 +23,8 @@ async function signup(req: Request, res: Response) {
     // Create user document first
     const newUserDoc = await userCollection.add({
       email,
+      name,
+      avatar: avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`,
       verificationCode: code,
       verified: false,
       createdAt: new Date().toISOString(),
@@ -29,18 +34,21 @@ async function signup(req: Request, res: Response) {
     await newUserDoc.update({
       id: newUserDoc.id
     });
+    
     await sendVerificationCode(email, code);
-    return res.status(201).json({ message: 'Verification code sent to email' });
+    return res.status(201).json({ 
+      message: 'Verification code sent to email',
+      user: {
+        id: newUserDoc.id,
+        email,
+        name,
+        avatar
+      }
+    });
   }
 
   // Existing user, check code
-  const user = userDoc.data();
-  if (user.verified) return res.status(400).json({ error: 'User already exists' });
-
-  if (verificationCode && verificationCode === user.verificationCode) {
-    await userDoc.ref.update({ verified: true, verificationCode: null });
-    return res.status(201).json({ id: userDoc.id, email });
-  }
+  // if (user.verified) return res.status(400).json({ error: 'User already exists' });
 
   return res.status(400).json({ error: 'Invalid verification code' });
 }

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { BoardService } from '../services/board.service';
+import { InviteService } from '../services/invite.service';
 
 export default {
   async createBoard(req: Request, res: Response) {
@@ -34,10 +35,20 @@ export default {
     const { id } = req.params;
     const userId = (req as any).user.id;
     await BoardService.deleteBoard(id, userId);
-    res.status(204).send();
+    res.json({ success: true });
   },
 
   async inviteMember(req: Request, res: Response) {
-    // Call InviteService
+    const { boardId } = req.params;
+    const { email_member } = req.body;
+    const userId = (req as any).user.id;
+    InviteService.inviteToBoard({ boardId, board_owner_id: userId, member_id: userId, email_member });
+  },
+
+  async acceptInvite(req: Request, res: Response) {
+    const { boardId, inviteId } = req.params;
+    const userId = (req as any).user.id;
+    const updatedBoard = await BoardService.acceptInvite(boardId, userId, inviteId);
+    res.json(updatedBoard);
   }
 }

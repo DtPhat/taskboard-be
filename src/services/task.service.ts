@@ -6,7 +6,12 @@ export const TaskService = {
   async getAllTasks(boardId: string, cardId: string) {
     const tasksRef = db.collection('boards').doc(boardId).collection('cards').doc(cardId).collection('tasks');
     const snapshot = await tasksRef.get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      boardId,
+      cardId,
+      ...doc.data()
+    }));
   },
 
   async createTask(boardId: string, cardId: string, { title, description, status, ownerId }: any) {
@@ -31,10 +36,58 @@ export const TaskService = {
     return { id: taskDoc.id, ...taskDoc.data() };
   },
 
-  async updateTask(boardId: string, cardId: string, taskId: string, { title, description, status, ownerId }: any) {
+  async updateTask(boardId: string, cardId: string, taskId: string, { title, description, status, ownerId, newCardId }: any) {
     const taskRef = db.collection('boards').doc(boardId).collection('cards').doc(cardId).collection('tasks').doc(taskId);
+    const taskDoc = await taskRef.get();
+    if (!taskDoc.exists) throw { status: 404, message: 'Task not found' };
+
+    // If newCardId is provided and different from current cardId
+    if (newCardId && newCardId !== cardId) {
+      // Get the current task data
+      const taskData = taskDoc.data();
+      
+      // Delete from current card
+      await taskRef.delete();
+      
+      // Add to new card
+      const newTaskRef = db.collection('boards').doc(boardId).collection('cards').doc(newCardId).collection('tasks').doc(taskId);
+      await newTaskRef.set({
+        ...taskData,
+        title,
+        description,
+        status,
+        ownerId
+      });
+      
+      // Update tasks_count in both cards
+      await db.collection('boards').doc(boardId).collection('cards').doc(cardId)
+        .update({ tasks_count: FieldValue.increment(-1) });
+      await db.collection('boards').doc(boardId).collection('cards').doc(newCardId)
+        .update({ tasks_count: FieldValue.increment(1) });
+
+      return {
+        id: taskId,
+        boardId,
+        cardId: newCardId,
+        title,
+        description,
+        status,
+        ownerId
+      };
+    }
+
+    // If no newCardId or same cardId, just update in place
     await taskRef.update({ title, description, status, ownerId });
-    return { id: taskId, title, description, status, ownerId };
+    
+    return {
+      id: taskId,
+      boardId,
+      cardId,
+      title,
+      description,
+      status,
+      ownerId
+    };
   },
 
   async deleteTask(boardId: string, cardId: string, taskId: string) {

@@ -4,7 +4,11 @@ export const CardService = {
   async getAllCards(boardId: string, userId: string) {
     const cardsRef = db.collection('boards').doc(boardId).collection('cards');
     const snapshot = await cardsRef.where('list_member', 'array-contains', userId).get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      boardId,
+      ...doc.data()
+    }));
   },
 
   async createCard(boardId: string, { name, description, createdAt, ownerId }: any) {
