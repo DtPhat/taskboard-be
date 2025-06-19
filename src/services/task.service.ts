@@ -6,12 +6,34 @@ export const TaskService = {
   async getAllTasks(boardId: string, cardId: string) {
     const tasksRef = db.collection('boards').doc(boardId).collection('cards').doc(cardId).collection('tasks');
     const snapshot = await tasksRef.get();
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      boardId,
-      cardId,
-      ...doc.data()
+    
+    const tasksWithMembers = await Promise.all(snapshot.docs.map(async (doc) => {
+      const taskData = doc.data();
+      const taskId = doc.id;
+      
+      // Get detailed member information
+      const members = await Promise.all(
+        (taskData.assignedMembers || []).map(async (memberId: string) => {
+          const memberDoc = await db.collection('users').doc(memberId).get();
+          if (!memberDoc.exists) return null;
+          const memberData = memberDoc.data();
+          return {
+            id: memberId,
+            ...memberData
+          };
+        })
+      );
+
+      return {
+        id: taskId,
+        boardId,
+        cardId,
+        ...taskData,
+        assignedMembers: members.filter((m): m is typeof members[0] => m !== null)
+      };
     }));
+
+    return tasksWithMembers;
   },
 
   async createTask(boardId: string, cardId: string, { title, description, status, ownerId }: any) {
@@ -19,7 +41,7 @@ export const TaskService = {
     const data = {
       title, description, status,
       ownerId,
-      assignedMembers: [],
+      assignedMembers: [ownerId],
       githubAttachments: [],
       createdAt: new Date().toISOString()
     };
@@ -108,7 +130,19 @@ export const TaskService = {
     const taskDoc = await db.collection('boards').doc(boardId).collection('cards').doc(cardId).collection('tasks').doc(taskId).get();
     if (!taskDoc.exists) throw { status: 404, message: 'Task not found' };
     const task = taskDoc.data();
-    return (task?.assignedMembers || []).map((memberId: string) => ({ taskId, memberId }));
+    const memberIds = task?.assignedMembers || [];
+    const members = await Promise.all(
+      memberIds.map(async (memberId: string) => {
+        const memberDoc = await db.collection('users').doc(memberId).get();
+        if (!memberDoc.exists) return null;
+        return { 
+          taskId, 
+          memberId,
+          ...memberDoc.data()
+        };
+      })
+    );
+    return members.filter((member): member is NonNullable<typeof member> => member !== null);
   },
 
   async removeMemberAssignment(boardId: string, cardId: string, taskId: string, memberId: string) {

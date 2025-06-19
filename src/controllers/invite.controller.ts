@@ -17,8 +17,15 @@ export default {
 
   async respondToInvite(req: Request, res: Response) {
     const { boardId, inviteId } = req.params;
-    const { member_id, status } = req.body;
-    await InviteService.respondToInvite({ boardId, inviteId, member_id, status });
+    const { member_id, status, board_owner_id, email_member } = req.body;
+    await InviteService.respondToInvite({ 
+      boardId,
+      invite_id: inviteId,
+      member_id,
+      status,
+      board_owner_id,
+      email_member
+    });
     res.status(200).json({ success: true });
   },
 };

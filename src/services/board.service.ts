@@ -3,6 +3,27 @@ import { db } from '../config';
 import { InviteService } from './invite.service';
 
 export const BoardService = {
+  async getBoardMembers(boardId: string) {
+    const boardDoc = await db.collection('boards').doc(boardId).get();
+    if (!boardDoc.exists) throw { status: 404, message: 'Board not found' };
+    const boardData = boardDoc.data();
+    if (!boardData) throw { status: 404, message: 'Board not found' };
+    const board = boardData;
+    
+    const members = await Promise.all(
+      board.members.map(async (memberId: string) => {
+        const memberDoc = await db.collection('users').doc(memberId).get();
+        if (!memberDoc.exists) return null;
+        const memberData = memberDoc.data();
+        return {
+          id: memberId,
+          ...memberData
+        };
+      })
+    );
+
+    return members.filter((m): m is typeof members[0] => m !== null);
+  },
   // Create a new board with ownerId
   async createBoard({ name, description, ownerId }: { name: string; description: string; ownerId: string }) {
     const boardRef = db.collection('boards').doc();
@@ -104,7 +125,7 @@ export const BoardService = {
   },
 
   // Accept board invitation
-  async acceptInvite(boardId: string, userId: string, inviteId: string) {
+  async acceptInvite(boardId: string, userId: string, invite_id: string) {
     // First check if user is already a member
     const boardRef = db.collection('boards').doc(boardId);
     const boardSnap = await boardRef.get();
@@ -118,11 +139,20 @@ export const BoardService = {
       throw { status: 400, message: 'You are already a member of this board' };
     }
 
+    // Get board owner ID
+    const boardDoc = await boardRef.get();
+    const boardOwner = boardDoc.data()?.ownerId;
+    if (!boardOwner) {
+      throw { status: 500, message: 'Board owner information not found' };
+    }
+
     // Accept the invite through InviteService
     await InviteService.respondToInvite({
       boardId,
-      inviteId,
+      invite_id,
       member_id: userId,
+      board_owner_id: boardOwner,
+      email_member: '', // This should ideally come from user data
       status: 'accepted'
     });
 

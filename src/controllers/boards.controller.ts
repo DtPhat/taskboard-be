@@ -38,15 +38,30 @@ export default {
     res.json({ success: true });
   },
 
+  async getBoardMembers(req: Request, res: Response) {
+    const { boardId } = req.params;
+    const members = await BoardService.getBoardMembers(boardId);
+    res.json(members);
+  },
+
   async inviteMember(req: Request, res: Response) {
     const { boardId } = req.params;
     const { email_member } = req.body;
     const userId = (req as any).user.id;
-    InviteService.inviteToBoard({ boardId, board_owner_id: userId, member_id: userId, email_member });
+    const invite = await InviteService.inviteToBoard({
+      boardId,
+      board_owner_id: userId,
+      member_id: '',
+      email_member,
+      status: 'pending'
+    });
+    res.json(invite);
+
   },
 
   async acceptInvite(req: Request, res: Response) {
-    const { boardId, inviteId } = req.params;
+    const { boardId } = req.params;
+    const { inviteId } = req.body;
     const userId = (req as any).user.id;
     const updatedBoard = await BoardService.acceptInvite(boardId, userId, inviteId);
     res.json(updatedBoard);
